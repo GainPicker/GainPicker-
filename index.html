@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>BTC Multi-Strategy Backtester</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0B0E14;color:#DDE3EA;font-family:ui-sans-serif,-apple-system,sans-serif;padding:14px 12px 60px;max-width:600px;margin:0 auto}
+h1{font-size:19px;font-weight:700;margin-bottom:2px}
+.sub{color:#4B5563;font-size:12px;margin-bottom:14px}
+.card{background:#12171F;border:1px solid #1E2530;border-radius:10px;padding:13px;margin-bottom:11px}
+.sec{font-size:10px;color:#4B5563;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.f label{display:block;font-size:10px;color:#4B5563;font-family:monospace;margin-bottom:3px}
+.f input{width:100%;background:#0B0E14;border:1px solid #1E2530;color:#DDE3EA;border-radius:6px;padding:7px 9px;font-family:monospace;font-size:13px}
+.f input:focus{outline:none;border-color:#22B8A6}
+.st{font-size:12px;margin:8px 0;padding:8px 10px;border-radius:6px;line-height:1.5}
+.ok{background:rgba(34,184,166,.1);color:#22B8A6;border:1px solid rgba(34,184,166,.2)}
+.er{background:rgba(239,93,96,.1);color:#EF5D60;border:1px solid rgba(239,93,96,.2)}
+.wn{background:rgba(242,169,59,.1);color:#F2A93B;border:1px solid rgba(242,169,59,.2)}
+.btn{font-family:inherit;font-size:13px;font-weight:600;padding:11px;border-radius:8px;border:none;background:#22B8A6;color:#04201C;cursor:pointer;width:100%;margin-top:6px}
+.btn:disabled{background:#1E2530;color:#4B5563;cursor:not-allowed}
+.btn2{background:#1E2530;color:#8A94A3}
+.sw{display:flex;gap:0;margin-bottom:12px;border:1px solid #1E2530;border-radius:8px;overflow:hidden}
+.sw button{flex:1;font-family:inherit;font-size:12px;font-weight:600;padding:9px 4px;border:none;background:transparent;color:#4B5563;cursor:pointer;border-right:1px solid #1E2530}
+.sw button:last-child{border-right:none}
+.sw button.on{background:#22B8A6;color:#04201C}
+.tabs{display:flex;gap:5px;margin-bottom:11px;flex-wrap:wrap}
+.tab{font-family:inherit;font-size:12px;font-weight:600;padding:6px 11px;border-radius:6px;border:1px solid #1E2530;background:transparent;color:#4B5563;cursor:pointer}
+.tab.on{background:#22B8A6;color:#04201C;border-color:#22B8A6}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.sc{background:#0F1318;border:1px solid #1E2530;border-radius:8px;padding:9px 11px}
+.sl2{font-size:10px;color:#4B5563;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.sv{font-family:monospace;font-size:15px;font-weight:600}
+.pos{color:#22B8A6}.neg{color:#EF5D60}
+.eq{background:#0F1318;border:1px solid #1E2530;border-radius:8px;padding:10px}
+.tw{overflow-x:auto;max-height:380px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-family:monospace;font-size:11px}
+th{text-align:left;padding:5px 6px;border-bottom:1px solid #1E2530;color:#4B5563;font-size:9px;text-transform:uppercase;position:sticky;top:0;background:#12171F;white-space:nowrap}
+td{padding:5px 6px;border-bottom:1px solid #0F1318;white-space:nowrap}
+.ab{font-size:13px;line-height:1.75;color:#C8D4DE;white-space:pre-wrap}
+.sdesc{font-size:11px;color:#4B5563;margin-top:6px;padding:8px;background:#0B0E14;border-radius:6px;line-height:1.5}
+</style>
+</head>
+<body>
+<p style="font-size:10px;color:#22B8A6;letter-spacing:.15em;text-transform:uppercase;margin-bottom:3px">Multi-Strategy Backtester · BTCUSD</p>
+<h1>BTC Strategy Backtester</h1>
+<p class="sub">Real Alpaca data · Three Timeframes · AI Analysis</p>
+
+<div class="card">
+  <div class="sec">Data source</div>
+  <div class="g2">
+    <div class="f"><label>Start Date</label><input id="sd" type="date" value="2023-01-01"></div>
+    <div class="f"><label>Timezone Offset (UTC±)</label><input id="tz" type="number" value="1" step="1"></div>
+  </div>
+  <button class="btn" onclick="fetchDeriv()" style="background:#F2A93B;color:#1a0a00">⬇ Fetch BTCUSD from Deriv (Recommended)</button>
+  <div class="sdesc" style="margin-top:6px">Uses Deriv's exact price feed — matches your MT5 chart perfectly. No login needed.</div>
+  <div class="g2" style="margin-top:10px">
+    <div class="f"><label>Alpaca API Key (optional)</label><input id="ak" value="PKH5YLVEU5IHFFDW73XPBOH4RU"></div>
+    <div class="f"><label>Alpaca Secret (optional)</label><input id="as" type="password" value="DXKxXDQEvNKxuQjDgRkupLFcfFNrrmjk69AZ5NCg5Yz7"></div>
+  </div>
+  <button class="btn btn2" onclick="fetchAlpaca()">⬇ Fetch from Alpaca instead</button>
+  <div id="ds" class="st wn">Tap Fetch Deriv to load data that matches your MT5 chart.</div>
+</div>
+
+<div class="card">
+  <div class="sec">Select strategy</div>
+  <div class="sw">
+    <button class="on" onclick="setSt(1,this)">ADX+Stoch</button>
+    <button onclick="setSt(2,this)">PSar Lag</button>
+    <button onclick="setSt(3,this)">PSar Single</button>
+  </div>
+  <div id="sdesc1" class="sdesc"><b>ADX + Stochastic Dual TF:</b> PSar + Stoch(2,20,20) cross arms → ADX crosses above/below 25 + Stoch(5,3,3) + candle direction. TP=fractal. SL=PSar dot. 4H filter.</div>
+  <div id="sdesc3" class="sdesc" style="display:none"><b>Strategy 3 — PSar Single (0.02/0.20):</b><br>
+    Same logic as PSar Lag but using only ONE PSar setting (0.02/0.20)<br>
+    1D: PSar(0.02/0.20) below price (bull trend)<br>
+    4H: PSar(0.02/0.20) above price (pullback) then flips below<br>
+    Core: PSar(0.02/0.20) still above price on 1H at entry<br>
+    SL: PSar(0.02/0.20) EP on 4H minus SL buffer<br>
+    TP: PSar(0.01/0.10) swing high on 1H minus TP buffer</div>
+  <div id="sdesc2" class="sdesc" style="display:none"><b>Three TF PSar Lag (BUY only):</b><br>
+    1D: All 5 PSar below price (daily bull trend)<br>
+    4H: All 5 PSar above price (pullback confirmed)<br>
+    Entry: All 5 flip below price mid-4H candle<br>
+    <b>Core condition:</b> At least 1 of 5 PSar still above price on 1H (lag exists)<br>
+    SL: PSar(0.02/0.20) dot on 4H minus SL buffer<br>
+    TP: PSar(0.01/0.10) swing high on 1H minus TP buffer</div>
+</div>
+
+<div class="card" id="p1">
+  <div class="sec">Strategy 1 — ADX+Stoch parameters</div>
+  <div class="g2">
+    <div class="f"><label>Account Balance ($)</label><input id="bal" type="number" value="100000"></div>
+    <div class="f"><label>Lot Size</label><input id="lot" type="number" value="1" step="0.01"></div>
+    <div class="f"><label>ADX Period</label><input id="ap" type="number" value="20"></div>
+    <div class="f"><label>ADX Level</label><input id="al" type="number" value="25" step="0.5"></div>
+    <div class="f"><label>PSar Step</label><input id="ps" type="number" value="0.02" step="0.001"></div>
+    <div class="f"><label>PSar Max</label><input id="pm" type="number" value="0.2" step="0.01"></div>
+    <div class="f"><label>Fractal N</label><input id="fn" type="number" value="2"></div>
+  </div>
+</div>
+
+<div class="card" id="p2" style="display:none">
+  <div class="sec">Strategy 2 — PSar Lag parameters</div>
+  <div class="g2">
+    <div class="f"><label>Account Balance ($)</label><input id="bal2" type="number" value="10000"></div>
+    <div class="f"><label>Lot Size</label><input id="lot2" type="number" value="1" step="0.01"></div>
+    <div class="f"><label>TP Buffer (pips)</label><input id="tpbuf" type="number" value="100"></div>
+    <div class="f"><label>SL Buffer (pips)</label><input id="slbuf" type="number" value="50"></div>
+  </div>
+  <div class="sdesc">PSar settings fixed: 0.01/0.10 · 0.02/0.20 · 0.03/0.30 · 0.04/0.40 · 0.05/0.50<br>
+  TP = PSar(0.01/0.10) swing high on 1H minus TP buffer<br>
+  SL = PSar(0.02/0.20) dot on 4H minus SL buffer</div>
+</div>
+
+<div class="card" id="p3" style="display:none">
+  <div class="sec">Strategy 3 — PSar Single parameters</div>
+  <div class="g2">
+    <div class="f"><label>Account Balance ($)</label><input id="bal3" type="number" value="10000"></div>
+    <div class="f"><label>Lot Size</label><input id="lot3" type="number" value="1" step="0.01"></div>
+    <div class="f"><label>TP Buffer (pips)</label><input id="tpbuf3" type="number" value="100"></div>
+    <div class="f"><label>SL Buffer (pips)</label><input id="slbuf3" type="number" value="50"></div>
+  </div>
+  <div class="sdesc">Uses only PSar(0.02/0.20) on all timeframes<br>TP reference: PSar(0.01/0.10) swing high on 1H</div>
+</div>
+
+<button class="btn" id="rb" onclick="runBT()" disabled style="margin:0 0 11px">▶ Run Backtest</button>
+
+<div class="card" id="rc" style="display:none">
+  <div class="tabs">
+    <button class="tab on" onclick="sw('sm',this)">Summary</button>
+    <button class="tab" onclick="sw('yr',this)">By Year</button>
+    <button class="tab" onclick="sw('tl',this)">Trade Log</button>
+    <button class="tab" onclick="sw('ai',this)">AI Analysis</button>
+  </div>
+  <div id="sm"></div>
+  <div id="yr" style="display:none"></div>
+  <div id="tl" style="display:none"></div>
+  <div id="ai" style="display:none">
+    <p style="color:#4B5563;font-size:12px;margin-bottom:10px">Professional analysis of your backtest results.</p>
+    <button class="btn" onclick="runAI()">Generate AI Analysis</button>
+    <div id="ao"></div>
+  </div>
+</div>
+
+<script>
+var BARS=[],TRADES=[],STATS={},CUR_ST=1;
+
+function setSt(n,btn){
+  CUR_ST=n;
+  document.querySelectorAll('.sw button').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  document.getElementById('p1').style.display=n===1?'block':'none';
+  document.getElementById('p2').style.display=n===2?'block':'none';
+  document.getElementById('p3').style.display=n===3?'block':'none';
+  document.getElementById('sdesc1').style.display=n===1?'block':'none';
+  document.getElementById('sdesc2').style.display=n===2?'block':'none';
+  document.getElementById('sdesc3').style.display=n===3?'block':'none';
+  document.getElementById('rc').style.display='none';
+}
+
+// ── Indicators ───────────────────────────────────────────────────
+function sma(a,p){var o=new Array(a.length).fill(null);for(var i=p-1;i<a.length;i++){var s=0,ok=true;for(var j=i-p+1;j<=i;j++){if(a[j]==null){ok=false;break;}s+=a[j];}if(ok)o[i]=s/p;}return o;}
+function stoch(b,kP,sl,dP){var rK=new Array(b.length).fill(null);for(var i=kP-1;i<b.length;i++){var hh=-1e9,ll=1e9;for(var j=i-kP+1;j<=i;j++){if(b[j][2]>hh)hh=b[j][2];if(b[j][3]<ll)ll=b[j][3];}rK[i]=(hh-ll)>0?100*(b[i][4]-ll)/(hh-ll):50;}var mK=sma(rK,sl);return{mK:mK,sD:sma(mK,dP)};}
+function adxCalc(b,per){var n=b.length,pD=new Array(n).fill(0),mD=new Array(n).fill(0),tr=new Array(n).fill(0);for(var i=1;i<n;i++){var up=b[i][2]-b[i-1][2],dn=b[i-1][3]-b[i][3];pD[i]=(up>dn&&up>0)?up:0;mD[i]=(dn>up&&dn>0)?dn:0;tr[i]=Math.max(b[i][2]-b[i][3],Math.abs(b[i][2]-b[i-1][4]),Math.abs(b[i][3]-b[i-1][4]));}var sT=new Array(n).fill(null),sP=new Array(n).fill(null),sM=new Array(n).fill(null),ts=0,ps2=0,ms=0;for(var i=1;i<=per&&i<n;i++){ts+=tr[i];ps2+=pD[i];ms+=mD[i];}if(per<n){sT[per]=ts;sP[per]=ps2;sM[per]=ms;}for(var i=per+1;i<n;i++){sT[i]=sT[i-1]-sT[i-1]/per+tr[i];sP[i]=sP[i-1]-sP[i-1]/per+pD[i];sM[i]=sM[i-1]-sM[i-1]/per+mD[i];}var dx=new Array(n).fill(null),adx=new Array(n).fill(null);for(var i=per;i<n;i++){if(sT[i]>0){var pi=100*sP[i]/sT[i],mi=100*sM[i]/sT[i],s=pi+mi;dx[i]=s>0?100*Math.abs(pi-mi)/s:0;}}var se=Math.min(per*2,n),ds=0,dc=0;for(var i=per;i<se;i++){if(dx[i]!=null){ds+=dx[i];dc++;}}if(dc&&se-1<n)adx[se-1]=ds/dc;for(var i=se;i<n;i++){if(adx[i-1]!=null&&dx[i]!=null)adx[i]=(adx[i-1]*(per-1)+dx[i])/per;}return adx;}
+
+function psarCalc(b,st,mx){
+  var n=b.length,sar=new Array(n).fill(null),bull=new Array(n).fill(null);
+  var iB=true,af=st,ep=b[0][2],pv=b[0][3];
+  sar[0]=pv;bull[0]=true;
+  for(var i=1;i<n;i++){
+    pv=pv+af*(ep-pv);
+    if(iB){pv=Math.min(pv,b[Math.max(0,i-1)][3],b[Math.max(0,i-2)][3]);if(b[i][3]<pv){iB=false;pv=ep;ep=b[i][3];af=st;}else if(b[i][2]>ep){ep=b[i][2];af=Math.min(af+st,mx);}}
+    else{pv=Math.max(pv,b[Math.max(0,i-1)][2],b[Math.max(0,i-2)][2]);if(b[i][2]>pv){iB=true;pv=ep;ep=b[i][2];af=st;}else if(b[i][3]<ep){ep=b[i][3];af=Math.min(af+st,mx);}}
+    sar[i]=pv;bull[i]=iB;
+  }
+  return{sar:sar,bull:bull};
+}
+
+// PSar with full state saving (needed for mid-candle flip detection)
+function psarCalcStates(b,st,mx){
+  var n=b.length,sar=new Array(n).fill(null),bull=new Array(n).fill(null),states=[];
+  var iB=true,af=st,ep=b[0][2],pv=b[0][3];
+  sar[0]=pv;bull[0]=true;
+  states.push({iB:true,af:af,ep:ep,pv:pv,prevH:b[0][2],prevL:b[0][3],p2H:b[0][2],p2L:b[0][3]});
+  for(var i=1;i<n;i++){
+    var p2H=states[i-1].prevH,p2L=states[i-1].prevL;
+    pv=pv+af*(ep-pv);
+    if(iB){pv=Math.min(pv,b[Math.max(0,i-1)][3],b[Math.max(0,i-2)][3]);if(b[i][3]<pv){iB=false;pv=ep;ep=b[i][3];af=st;}else if(b[i][2]>ep){ep=b[i][2];af=Math.min(af+st,mx);}}
+    else{pv=Math.max(pv,b[Math.max(0,i-1)][2],b[Math.max(0,i-2)][2]);if(b[i][2]>pv){iB=true;pv=ep;ep=b[i][2];af=st;}else if(b[i][3]<ep){ep=b[i][3];af=Math.min(af+st,mx);}}
+    sar[i]=pv;bull[i]=iB;
+    states.push({iB:iB,af:af,ep:ep,pv:pv,prevH:b[i][2],prevL:b[i][3],p2H:p2H,p2L:p2L});
+  }
+  return{sar:sar,bull:bull,states:states};
+}
+
+// Would a bearish PSar flip to bullish given a running high?
+function wouldFlipBull(state,runH){
+  if(state.iB)return true;
+  var pv=state.pv+state.af*(state.ep-state.pv);
+  pv=Math.max(pv,state.prevH,state.p2H);
+  return runH>pv;
+}
+// SL = PSar(0.02/0.20) dot after flip = EP of bearish phase (lowest low)
+function getSL(state){return state.iB?state.pv:state.ep;}
+
+function fractals(b,fn){var fH=new Array(b.length).fill(null),fL=new Array(b.length).fill(null);for(var i=fn;i<b.length-fn;i++){var isH=true,isL=true;for(var j=i-fn;j<=i+fn;j++){if(j===i)continue;if(b[j][2]>=b[i][2])isH=false;if(b[j][3]<=b[i][3])isL=false;}if(isH)fH[i]=b[i][2];if(isL)fL[i]=b[i][3];}return{fH:fH,fL:fL};}
+function build4H(b1){var bk={};for(var i=0;i<b1.length;i++){var k=Math.floor(b1[i][0]/(4*3600))*(4*3600);if(!bk[k]){bk[k]={o:b1[i][1],h:b1[i][2],l:b1[i][3],c:b1[i][4],e:i};}else{if(b1[i][2]>bk[k].h)bk[k].h=b1[i][2];if(b1[i][3]<bk[k].l)bk[k].l=b1[i][3];bk[k].c=b1[i][4];bk[k].e=i;}}var ks=Object.keys(bk).sort(function(a,b){return+a-+b;});return ks.map(function(k){var v=bk[k];return[+k,v.o,v.h,v.l,v.c,v.e];});}
+function build1D(b1){var bk={};for(var i=0;i<b1.length;i++){var k=Math.floor(b1[i][0]/(24*3600))*(24*3600);if(!bk[k]){bk[k]={o:b1[i][1],h:b1[i][2],l:b1[i][3],c:b1[i][4],e:i};}else{if(b1[i][2]>bk[k].h)bk[k].h=b1[i][2];if(b1[i][3]<bk[k].l)bk[k].l=b1[i][3];bk[k].c=b1[i][4];bk[k].e=i;}}var ks=Object.keys(bk).sort(function(a,b){return+a-+b;});return ks.map(function(k){var v=bk[k];return[+k,v.o,v.h,v.l,v.c,v.e];});}
+function buildMap(b1,bx){var m=new Array(b1.length).fill(-1),hi=-1;for(var i=0;i<b1.length;i++){while(hi+1<bx.length&&bx[hi+1][5]<i)hi++;m[i]=hi;}return m;}
+function nFH(fH,eb,fn,above){for(var i=eb-fn-1;i>=0;i--){if(fH[i]!=null&&fH[i]>above)return fH[i];}return null;}
+function nFL(fL,eb,fn,below){for(var i=eb-fn-1;i>=0;i--){if(fL[i]!=null&&fL[i]<below)return fL[i];}return null;}
+function tt(ts,off){var d=new Date((ts+off*3600)*1000);return d.toISOString().slice(0,16).replace('T',' ');}
+
+// ── Strategy 1: ADX + Stochastic Dual TF ────────────────────────
+function runStrategy1(b1,p){
+  var bx=build4H(b1),mp=buildMap(b1,bx);
+  var s1=stoch(b1,2,20,20),s2=stoch(b1,5,3,3),adx=adxCalc(b1,p.ap),ps=psarCalc(b1,p.ps,p.pm);
+  var fr=fractals(b1,p.fn),s4=stoch(bx,2,20,20),ps4=psarCalc(bx,p.ps,p.pm);
+  var trades=[],bSt=0,sSt=0;
+  for(var i=2;i<b1.length;i++){
+    var k1=s1.mK[i],d1=s1.sD[i],k1p=s1.mK[i-1],d1p=s1.sD[i-1],av=adx[i],avp=adx[i-1];
+    if([k1,d1,k1p,d1p,av,avp].some(function(v){return v==null;}))continue;
+    var psB=ps.bull[i],s1Bull=k1>d1,s1Bear=k1<d1,s1BullX=k1p<=d1p&&k1>d1,s1BearX=k1p>=d1p&&k1<d1;
+    var adxUp=avp<=p.al&&av>p.al,adxDn=avp>=p.al&&av<p.al;
+    var h4i=mp[i],h4e=h4i>=0&&bx[h4i]?bx[h4i][5]:i;
+    var htfPB=h4i>=0&&ps4.bull[Math.min(h4e,b1.length-1)];
+    var s4K=s4.mK[h4i],s4D=s4.sD[h4i];
+    var htfSB=h4i>=0&&s4K!=null&&s4D!=null&&s4K>s4D,htfSBr=h4i>=0&&s4K!=null&&s4D!=null&&s4K<s4D;
+    var k2=s2.mK[i],d2=s2.sD[i],s2Bull=k2!=null&&d2!=null&&k2>d2,s2Bear=k2!=null&&d2!=null&&k2<d2;
+    if(bSt===0){if(psB&&s1BullX)bSt=1;}
+    else if(bSt===1){if(!psB||!s1Bull)bSt=0;else if(adxUp&&s2Bear&&b1[i][4]<b1[i][1]&&htfPB&&htfSB){var ep=b1[i][4],sl=ps.sar[i],tp=nFH(fr.fH,i,p.fn,ep);if(tp!=null&&sl!=null&&sl<ep&&tp>ep){var r=sim(b1,i,ep,sl,tp,'BUY');var pp=r.xp-ep,rr=Math.abs(ep-sl)>0?pp/Math.abs(ep-sl):0;trades.push({dir:'BUY',t:tt(b1[i][0],p.tz),ep:ep,sl:sl,tp:tp,xt:tt(b1[r.xi][0],p.tz),xp:r.xp,rsn:r.rsn,pips:pp,r:rr,pnl:pp*p.lot});}bSt=0;}}
+    if(sSt===0){if(!psB&&s1BearX)sSt=1;}
+    else if(sSt===1){if(psB||!s1Bear)sSt=0;else if(adxDn&&s2Bull&&b1[i][4]>b1[i][1]&&!htfPB&&htfSBr){var ep=b1[i][4],sl=ps.sar[i],tp=nFL(fr.fL,i,p.fn,ep);if(tp!=null&&sl!=null&&sl>ep&&tp<ep){var r=sim(b1,i,ep,sl,tp,'SELL');var pp=ep-r.xp,rr=Math.abs(ep-sl)>0?pp/Math.abs(ep-sl):0;trades.push({dir:'SELL',t:tt(b1[i][0],p.tz),ep:ep,sl:sl,tp:tp,xt:tt(b1[r.xi][0],p.tz),xp:r.xp,rsn:r.rsn,pips:pp,r:rr,pnl:pp*p.lot});}sSt=0;}}
+  }
+  return trades;
+}
+
+// ── Strategy 2: Three TF PSar Lag ───────────────────────────────
+// CORRECTED: Enter mid-4H candle when all 5 PSar flip, don't wait for close
+var PSAR_SETS=[[0.01,0.10],[0.02,0.20],[0.03,0.30],[0.04,0.40],[0.05,0.50]];
+
+function runStrategy2(b1,p){
+  var bx4=build4H(b1),bx1d=build1D(b1);
+  var mp4=buildMap(b1,bx4),mp1d=buildMap(b1,bx1d);
+
+  // PSar with states on 4H (needed for mid-candle flip detection)
+  var ps4=[];
+  for(var s=0;s<5;s++) ps4.push(psarCalcStates(bx4,PSAR_SETS[s][0],PSAR_SETS[s][1]));
+
+  // PSar on 1D (trend filter)
+  var ps1d=[];
+  for(var s=0;s<5;s++) ps1d.push(psarCalc(bx1d,PSAR_SETS[s][0],PSAR_SETS[s][1]));
+
+  // PSar on 1H (for TP: lowest PSar dot above price = lag resistance)
+  // PSar(0.01/0.10) on 1H — slowest setting for TP swing high reference
+  var ps1h_slow=psarCalc(b1,0.01,0.10);
+  // All 5 PSar on 1H — for lag check (at least 1 must be above price at entry)
+  var ps1h_slow_all=[];
+  for(var s=0;s<5;s++) ps1h_slow_all.push(psarCalc(b1,PSAR_SETS[s][0],PSAR_SETS[s][1]));
+
+  var trades=[],tpbuf=p.tpbuf||100,slbuf=p.slbuf||50;
+  var curH4Key=-1,curH4RunH=-1e9,curH4RunL=1e9;
+  var prevH4AllBear=false,flipped=[false,false,false,false,false],tradeInPeriod=false;
+
+  for(var i=50;i<b1.length;i++){
+    var h4Key=Math.floor(b1[i][0]/(4*3600))*(4*3600);
+    var h4i=mp4[i]; // last COMPLETED 4H bar
+
+    // ── New 4H period starts ──────────────────────────────────────
+    if(h4Key!==curH4Key){
+      curH4Key=h4Key;
+      curH4RunH=b1[i][2]; curH4RunL=b1[i][3];
+      tradeInPeriod=false;
+      // Was previous completed 4H bar all 5 bearish? (pullback confirmed)
+      if(h4i>=1){
+        prevH4AllBear=true;
+        for(var s=0;s<5;s++){if(ps4[s].bull[h4i]){prevH4AllBear=false;break;}}
+      }else{prevH4AllBear=false;}
+      // Init flip flags: pre-flipped if already bullish at end of last completed bar
+      for(var s=0;s<5;s++) flipped[s]=h4i>=0?ps4[s].bull[h4i]:false;
+    }else{
+      // Update running H/L within current 4H period
+      if(b1[i][2]>curH4RunH)curH4RunH=b1[i][2];
+      if(b1[i][3]<curH4RunL)curH4RunL=b1[i][3];
+    }
+
+    if(!prevH4AllBear||tradeInPeriod||h4i<0)continue;
+
+    // ── 1D filter: all 5 PSar below price (daily bull trend) ─────
+    var d1i=mp1d[i];
+    if(d1i<0)continue;
+    var allD1Bull=true;
+    for(var s=0;s<5;s++){if(!ps1d[s].bull[d1i]){allD1Bull=false;break;}}
+    if(!allD1Bull)continue;
+
+    // ── Check if each setting has flipped to bullish mid-4H ──────
+    // A bearish PSar flips when running high exceeds virtual SAR
+    for(var s=0;s<5;s++){
+      if(!flipped[s]&&wouldFlipBull(ps4[s].states[h4i],curH4RunH))
+        flipped[s]=true;
+    }
+
+    // ── All 5 flipped on 4H? ─────────────────────────────────────
+    var allFlipped=true;
+    for(var s=0;s<5;s++){if(!flipped[s]){allFlipped=false;break;}}
+    if(!allFlipped)continue;
+
+    var ep=b1[i][4];
+
+    // ── CORE CONDITION: 1H PSar Lag check ───────────────────────
+    // At least 1 of the 5 PSar settings must still be ABOVE price on 1H
+    // This lag = the resistance dots above price = the TP target
+    // If ALL 5 are already below price on 1H, lag is gone → NO TRADE
+    var lagCount=0;
+    for(var s=0;s<5;s++){
+      if(!ps1h_slow_all[s].bull[i]&&ps1h_slow_all[s].sar[i]!=null&&ps1h_slow_all[s].sar[i]>ep)
+        lagCount++;
+    }
+    if(lagCount===0)continue; // No PSar lag on 1H → skip trade
+
+    // ── SL = PSar(0.02/0.20) SAR dot on 4H flip candle ──────────
+    // EP of bearish PSar phase = lowest low during pullback
+    // That becomes the dot sitting below price after the flip
+    var sl=ps4[1].states[h4i].ep-slbuf;
+    if(sl>=ep)continue;
+
+    // ── TP = PSar(0.01/0.10) on 1H swing high minus buffer ──────
+    // Find most recent 1H bar where PSar(0.01/0.10) flipped bull→bear
+    // That SAR value = swing high at start of pullback = TP reference
+    var tp=null;
+    for(var j=i-1;j>=Math.max(0,i-500);j--){
+      if(j>0&&ps1h_slow.bull[j-1]&&!ps1h_slow.bull[j]){
+        tp=ps1h_slow.sar[j]-tpbuf;
+        break;
+      }
+    }
+    if(tp==null||tp<=ep)continue;
+
+    var r=sim(b1,i,ep,sl,tp,'BUY');
+    var pp=r.xp-ep,rr=Math.abs(ep-sl)>0?pp/Math.abs(ep-sl):0;
+    trades.push({dir:'BUY',t:tt(b1[i][0],p.tz),ep:ep,sl:sl,tp:tp,
+      xt:tt(b1[r.xi][0],p.tz),xp:r.xp,rsn:r.rsn,pips:pp,r:rr,pnl:pp*p.lot});
+    tradeInPeriod=true;
+  }
+  return trades;
+}
+
+
+// ── Strategy 3: Single PSar(0.02/0.20) — same logic as Strategy 2 ──
+function runStrategy3(b1,p){
+  var bx4=build4H(b1),bx1d=build1D(b1);
+  var mp4=buildMap(b1,bx4),mp1d=buildMap(b1,bx1d);
+  var ST=0.02,MX=0.20;
+  // Single PSar on each TF
+  var ps4=psarCalcStates(bx4,ST,MX);
+  var ps1d=psarCalc(bx1d,ST,MX);
+  var ps1h=psarCalc(b1,ST,MX);         // lag check on 1H
+  var ps1h_slow=psarCalc(b1,0.01,0.10); // TP swing high reference
+  var trades=[],tpbuf=p.tpbuf||100,slbuf=p.slbuf||50;
+  var curH4Key=-1,curH4RunH=-1e9,prevH4Bear=false,flipped=false,tradeInPeriod=false;
+  for(var i=50;i<b1.length;i++){
+    var h4Key=Math.floor(b1[i][0]/(4*3600))*(4*3600);
+    var h4i=mp4[i];
+    if(h4Key!==curH4Key){
+      curH4Key=h4Key; curH4RunH=b1[i][2]; tradeInPeriod=false;
+      prevH4Bear=h4i>=1&&!ps4.bull[h4i];
+      flipped=h4i>=0?ps4.bull[h4i]:false;
+    }else{ if(b1[i][2]>curH4RunH)curH4RunH=b1[i][2]; }
+    if(!prevH4Bear||tradeInPeriod||h4i<0)continue;
+    // 1D: PSar below price
+    var d1i=mp1d[i];
+    if(d1i<0||!ps1d.bull[d1i])continue;
+    // 4H flip check
+    if(!flipped&&wouldFlipBull(ps4.states[h4i],curH4RunH))flipped=true;
+    if(!flipped)continue;
+    var ep=b1[i][4];
+    // Core: PSar(0.02/0.20) still above price on 1H (lag must exist)
+    if(ps1h.bull[i]||!ps1h.sar[i]||ps1h.sar[i]<=ep)continue;
+    // SL = EP of bearish PSar(0.02/0.20) on 4H minus buffer
+    var sl=ps4.states[h4i].ep-slbuf;
+    if(sl>=ep)continue;
+    // TP = PSar(0.01/0.10) swing high on 1H minus buffer
+    var tp=null;
+    for(var j=i-1;j>=Math.max(0,i-500);j--){
+      if(j>0&&ps1h_slow.bull[j-1]&&!ps1h_slow.bull[j]){tp=ps1h_slow.sar[j]-tpbuf;break;}
+    }
+    if(tp==null||tp<=ep)continue;
+    var r=sim(b1,i,ep,sl,tp,'BUY');
+    var pp=r.xp-ep,rr=Math.abs(ep-sl)>0?pp/Math.abs(ep-sl):0;
+    trades.push({dir:'BUY',t:tt(b1[i][0],p.tz),ep:ep,sl:sl,tp:tp,
+      xt:tt(b1[r.xi][0],p.tz),xp:r.xp,rsn:r.rsn,pips:pp,r:rr,pnl:pp*p.lot});
+    tradeInPeriod=true;
+  }
+  return trades;
+}
+
+function sim(b,i,ep,sl,tp,dir){
+  var lim=Math.min(i+500,b.length-1);
+  for(var j=i+1;j<=lim;j++){
+    if(dir==='BUY'){if(b[j][3]<=sl)return{xi:j,xp:sl,rsn:'SL'};if(b[j][2]>=tp)return{xi:j,xp:tp,rsn:'TP'};}
+    else{if(b[j][2]>=sl)return{xi:j,xp:sl,rsn:'SL'};if(b[j][3]<=tp)return{xi:j,xp:tp,rsn:'TP'};}
+  }
+  return{xi:lim,xp:b[lim][4],rsn:'TIME'};
+}
+
+function calcStats(trades,bal){
+  var wins=trades.filter(function(t){return t.pips>0;}),losses=trades.filter(function(t){return t.pips<=0;});
+  var buys=trades.filter(function(t){return t.dir==='BUY';}),sells=trades.filter(function(t){return t.dir==='SELL';});
+  var gw=wins.reduce(function(s,t){return s+t.pips;},0),gl=Math.abs(losses.reduce(function(s,t){return s+t.pips;},0));
+  var cum=0,peak=0,maxDD=0,cumPnl=0;
+  var eq=trades.map(function(t){cum+=t.pips;cumPnl+=t.pnl;if(cum>peak)peak=cum;var dd=peak-cum;if(dd>maxDD)maxDD=dd;return cum;});
+  return{n:trades.length,wins:wins.length,wr:trades.length?wins.length/trades.length*100:0,
+    pf:gl>0?gw/gl:Infinity,netPips:cum,avgWin:wins.length?gw/wins.length:0,
+    avgLoss:losses.length?gl/losses.length:0,maxDD:maxDD,eq:eq,
+    buys:buys.length,sells:sells.length,
+    buyWins:buys.filter(function(t){return t.pips>0;}).length,
+    sellWins:sells.filter(function(t){return t.pips>0;}).length,
+    finalBal:bal+cumPnl,netPnl:cumPnl};
+}
+
+// ── Fetch from Deriv WebSocket (free, no auth, matches MT5 chart) ──
+async function fetchDeriv(){
+  document.getElementById('rb').disabled=true;
+  setDS('Connecting to Deriv...','wn');
+  try{
+    var startDate=document.getElementById('sd').value;
+    var startTs=Math.floor(new Date(startDate).getTime()/1000);
+    var allBars=[];
+    var endTs=Math.floor(Date.now()/1000);
+    var batchSize=4500; // Deriv max ~5000 per request
+    var maxBatches=20; // up to 20 batches = ~3 years of 1H data
+    var batch=0;
+    setDS('Fetching Deriv BTCUSD 1H data... (this takes ~30 seconds)','wn');
+    while(endTs>startTs&&batch<maxBatches){
+      batch++;
+      var bars=await fetchDerivBatch(endTs,batchSize);
+      if(!bars||bars.length===0)break;
+      // bars come newest first, oldest last
+      bars.forEach(function(b){
+        allBars.push([b.epoch,b.open,b.high,b.low,b.close]);
+      });
+      // Move end time back to before oldest bar in this batch
+      var oldest=bars[bars.length-1].epoch;
+      if(oldest<=startTs)break;
+      endTs=oldest-1;
+      setDS('Fetching page '+batch+'... ('+allBars.length.toLocaleString()+' bars so far)','wn');
+      // Small delay to avoid rate limiting
+      await new Promise(function(r){setTimeout(r,300);});
+    }
+    // Sort ascending by timestamp
+    allBars.sort(function(a,b){return a[0]-b[0];});
+    // Filter to start date
+    allBars=allBars.filter(function(b){return b[0]>=startTs;});
+    BARS=allBars;
+    var d0=new Date(BARS[0][0]*1000).toISOString().slice(0,10);
+    var d1=new Date(BARS[BARS.length-1][0]*1000).toISOString().slice(0,10);
+    setDS('✓ '+BARS.length.toLocaleString()+' bars loaded from Deriv ('+d0+' → '+d1+') — matches your MT5 chart!','ok');
+    document.getElementById('rb').disabled=false;
+  }catch(e){
+    setDS('Deriv fetch failed: '+e.message+'. Try Alpaca instead.','er');
+    document.getElementById('rb').disabled=false;
+  }
+}
+
+function fetchDerivBatch(endTs,count){
+  return new Promise(function(resolve,reject){
+    var ws=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1');
+    var timeout=setTimeout(function(){
+      ws.close();
+      reject(new Error('Deriv WebSocket timeout'));
+    },15000);
+    ws.onopen=function(){
+      ws.send(JSON.stringify({
+        ticks_history:'cryBTCUSD',
+        style:'candles',
+        granularity:3600,
+        end:endTs,
+        count:count,
+        adjust_start_time:1
+      }));
+    };
+    ws.onmessage=function(evt){
+      clearTimeout(timeout);
+      ws.close();
+      try{
+        var data=JSON.parse(evt.data);
+        if(data.error){reject(new Error(data.error.message||'Deriv API error'));return;}
+        if(data.candles&&data.candles.length>0){resolve(data.candles);}
+        else{resolve([]);}
+      }catch(e){reject(e);}
+    };
+    ws.onerror=function(e){
+      clearTimeout(timeout);
+      ws.close();
+      reject(new Error('WebSocket connection error'));
+    };
+  });
+}
+
+async function fetchAlpaca(){
+  var key=document.getElementById('ak').value.trim(),sec=document.getElementById('as').value.trim(),start=document.getElementById('sd').value;
+  if(!key||!sec){setDS('Enter API key and secret first','er');return;}
+  document.getElementById('rb').disabled=true;setDS('Connecting to Alpaca…','wn');
+  try{
+    var all=[],nxt=null,pg=0;
+    do{
+      pg++;
+      var url='https://data.alpaca.markets/v1beta3/crypto/us/bars?symbols=BTC%2FUSD&timeframe=1Hour&start='+start+'T00:00:00Z&limit=1000&sort=asc';
+      if(nxt)url+='&page_token='+encodeURIComponent(nxt);
+      var resp=await fetch(url,{headers:{'APCA-API-KEY-ID':key,'APCA-API-SECRET-KEY':sec}});
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      var data=await resp.json();
+      var bars=(data.bars&&data.bars['BTC/USD'])||[];
+      bars.forEach(function(b){all.push([Math.floor(new Date(b.t).getTime()/1000),b.o,b.h,b.l,b.c]);});
+      nxt=data.next_page_token||null;
+      setDS('Fetching page '+pg+'… ('+all.length.toLocaleString()+' bars)','wn');
+    }while(nxt);
+    all.sort(function(a,b){return a[0]-b[0];});BARS=all;
+    var d0=new Date(BARS[0][0]*1000).toISOString().slice(0,10),d1=new Date(BARS[BARS.length-1][0]*1000).toISOString().slice(0,10);
+    setDS('✓ '+BARS.length.toLocaleString()+' bars loaded ('+d0+' → '+d1+')','ok');
+    document.getElementById('rb').disabled=false;
+  }catch(e){setDS('Alpaca failed: '+e.message,'er');document.getElementById('rb').disabled=false;}
+}
+
+function runBT(){
+  if(!BARS.length){alert('Fetch data first');return;}
+  document.getElementById('rb').disabled=true;document.getElementById('rb').textContent='Computing…';
+  setTimeout(function(){
+    try{
+      var tz=+document.getElementById('tz').value,bal,p;
+      var bal,bal2,bal3,p;
+      if(CUR_ST===1){
+        bal=+document.getElementById('bal').value;
+        p={ap:+document.getElementById('ap').value,al:+document.getElementById('al').value,
+          ps:+document.getElementById('ps').value,pm:+document.getElementById('pm').value,
+          fn:+document.getElementById('fn').value||2,lot:+document.getElementById('lot').value,tz:tz};
+        TRADES=runStrategy1(BARS,p);
+      }else if(CUR_ST===2){
+        bal2=+document.getElementById('bal2').value;
+        p={tpbuf:+document.getElementById('tpbuf').value||100,slbuf:+document.getElementById('slbuf').value||50,lot:+document.getElementById('lot2').value,tz:tz};
+        TRADES=runStrategy2(BARS,p);
+      }else{
+        bal3=+document.getElementById('bal3').value;
+        p={tpbuf:+document.getElementById('tpbuf3').value||100,slbuf:+document.getElementById('slbuf3').value||50,lot:+document.getElementById('lot3').value,tz:tz};
+        TRADES=runStrategy3(BARS,p);
+      }
+      STATS=calcStats(TRADES,CUR_ST===1?bal:CUR_ST===2?bal2:bal3);
+      renderResults(STATS,TRADES,CUR_ST===1?bal:CUR_ST===2?bal2:bal3);
+      document.getElementById('rc').style.display='block';
+      document.getElementById('rc').scrollIntoView({behavior:'smooth'});
+    }catch(e){alert('Error: '+e.message);}
+    document.getElementById('rb').disabled=false;document.getElementById('rb').textContent='▶ Run Backtest';
+  },80);
+}
+
+function f(v,d){d=d==null?1:d;return(v==null||isNaN(v))?'—':v.toFixed(d);}
+function renderResults(s,trades,bal){
+  var sc=[['Total trades',s.n,null],['Win rate',f(s.wr,1)+'%',s.wr>=50],
+    ['Profit factor',isFinite(s.pf)?f(s.pf):'∞',s.pf>=1.5],['Net pips',f(s.netPips,0),s.netPips>=0],
+    ['Avg win',f(s.avgWin,0)+' pips',true],['Avg loss','-'+f(s.avgLoss,0)+' pips',false],
+    ['Max DD',f(s.maxDD,0)+' pips',false],['Net P&L','$'+f(s.netPnl,2),s.netPnl>=0],
+    ['Final Bal','$'+s.finalBal.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}),s.finalBal>bal],
+    ['Buy/Sell wins',s.buyWins+'/'+s.sellWins,null]];
+  var h='<div class="sg">';
+  sc.forEach(function(x){var cl=x[2]===null?'':x[2]?'pos':'neg';h+='<div class="sc"><div class="sl2">'+x[0]+'</div><div class="sv '+cl+'">'+x[1]+'</div></div>';});
+  h+='</div>'+eqChart(s.eq);
+  document.getElementById('sm').innerHTML=h;
+  var by={};
+  trades.forEach(function(t){var y=t.t.slice(0,4);if(!by[y])by[y]={w:0,p:0,tot:0};if(t.pips>0)by[y].w++;by[y].p+=t.pips;by[y].tot++;});
+  var yrs=Object.keys(by).sort(),mx=Math.max.apply(null,yrs.map(function(y){return Math.abs(by[y].p);})),yh='';
+  yrs.forEach(function(y){var d=by[y],bw=mx?Math.abs(d.p)/mx*100:0,col=d.p>=0?'#22B8A6':'#EF5D60',wr=d.tot?Math.round(d.w/d.tot*100):0;
+    yh+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:11px"><span style="color:#555;font-family:monospace;width:36px;flex-shrink:0">'+y+'</span><div style="flex:1;background:#0A0D11;border-radius:3px;height:13px;overflow:hidden"><div style="width:'+bw+'%;height:100%;background:'+col+'"></div></div><span style="color:'+col+';font-family:monospace;width:75px;text-align:right;flex-shrink:0">'+(d.p>=0?'+':'')+Math.round(d.p)+'</span><span style="color:#444;width:36px;flex-shrink:0;text-align:right">'+wr+'%</span></div>';});
+  document.getElementById('yr').innerHTML=yh||'<p style="color:#4B5563">No data.</p>';
+  var th='<div class="tw"><table><thead><tr><th>#</th><th>Dir</th><th>Entry</th><th>Price</th><th>SL</th><th>TP</th><th>Exit</th><th>Exit$</th><th>Rsn</th><th>Pips</th><th>P&L</th></tr></thead><tbody>';
+  trades.forEach(function(t,i){
+    var dc=t.dir==='BUY'?'pos':'neg',rc=t.rsn==='TP'?'pos':t.rsn==='SL'?'neg':'',pc=t.pips>=0?'pos':'neg';
+    th+='<tr><td>'+(i+1)+'</td><td class="'+dc+'">'+t.dir+'</td><td>'+t.t+'</td><td>'+t.ep.toLocaleString()+'</td><td>'+t.sl.toFixed(0)+'</td><td>'+t.tp.toFixed(0)+'</td><td>'+t.xt+'</td><td>'+t.xp.toFixed(0)+'</td><td class="'+rc+'">'+t.rsn+'</td><td class="'+pc+'">'+(t.pips>=0?'+':'')+f(t.pips,1)+'</td><td class="'+pc+'">'+(t.pnl>=0?'+$':'-$')+Math.abs(t.pnl).toFixed(2)+'</td></tr>';});
+  th+='</tbody></table></div>';
+  document.getElementById('tl').innerHTML=th;document.getElementById('ao').innerHTML='';
+}
+function eqChart(eq){
+  if(!eq||!eq.length)return'';
+  var W=320,H=80,p=8,mn=Math.min.apply(null,[0].concat(eq)),mx=Math.max.apply(null,[0].concat(eq));
+  if(mn===mx){mn-=1;mx+=1;}var rng=mx-mn,px=function(i){return p+(i/(eq.length-1||1))*(W-p*2);},py=function(v){return H-p-((v-mn)/rng)*(H-p*2);};
+  var segs='';for(var i=1;i<eq.length;i++)segs+='<line x1="'+px(i-1)+'" y1="'+py(eq[i-1])+'" x2="'+px(i)+'" y2="'+py(eq[i])+'" stroke="'+(eq[i]>=0?'#22B8A6':'#EF5D60')+'" stroke-width="1.5"/>';
+  return'<div class="eq"><div style="font-size:10px;color:#4B5563;margin-bottom:6px">Equity curve (pips)</div><svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block"><line x1="'+p+'" y1="'+py(0)+'" x2="'+(W-p)+'" y2="'+py(0)+'" stroke="rgba(255,255,255,.07)" stroke-width="1"/>'+segs+'</svg></div>';
+}
+function sw(id,btn){['sm','yr','tl','ai'].forEach(function(x){document.getElementById(x).style.display='none';});document.getElementById(id).style.display='block';document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');}
+function setDS(msg,type){var el=document.getElementById('ds');el.textContent=msg;el.className='st '+type;}
+
+async function runAI(){
+  if(!TRADES.length){alert('Run backtest first');return;}
+  var s=STATS,ao=document.getElementById('ao');
+  ao.innerHTML='<div style="text-align:center;padding:20px;color:#22B8A6">Analysing '+s.n+' trades…</div>';
+  var stName=CUR_ST===1?'ADX(20) + Stochastic Dual TF':'Three TF PSar Lag (BUY only)';
+  var stDesc=CUR_ST===1?
+    'BUY: PSar below+Stoch(2,20,20) bullish cross→ADX UP above 25+Stoch(5,3,3) bearish+bearish candle. SELL: mirror. 4H filter.':
+    '1D: all 5 PSar below price. 4H: all 5 above price (pullback). Entry: all 5 flip below price mid-4H candle. SL=PSar(0.02/0.20) EP on 4H. TP=lowest PSar lag above price on 1H minus buffer.';
+  var prompt='You are a professional quantitative trading analyst.\n\nSTRATEGY: '+stName+'\n'+stDesc+'\n\nRESULTS:\nTrades: '+s.n+'\nWin rate: '+f(s.wr,1)+'%\nProfit factor: '+(isFinite(s.pf)?f(s.pf):'∞')+'\nNet pips: '+f(s.netPips,0)+'\nAvg win: '+f(s.avgWin,0)+' | Avg loss: '+f(s.avgLoss,0)+' pips\nMax DD: '+f(s.maxDD,0)+' pips\nNet P&L: $'+f(s.netPnl,2)+' | Final: $'+f(s.finalBal,2)+'\n\nTrades:\n'+TRADES.map(function(t,i){return(i+1)+'. '+t.dir+' '+t.t+' @ '+t.ep.toFixed(0)+' SL='+t.sl.toFixed(0)+' TP='+t.tp.toFixed(0)+' → '+t.rsn+' '+(t.pips>=0?'+':'')+t.pips.toFixed(0)+' pips';}).join('\n')+'\n\nWrite analysis:\n1.VERDICT 2.STRENGTHS 3.WEAKNESSES 4.RISK/REWARD 5.MARKET CONDITIONS 6.IMPROVEMENTS 7.RISK MANAGEMENT 8.RECOMMENDATION\nBe specific.';
+  try{
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    var data=await resp.json();
+    if(data.content)ao.innerHTML='<div class="ab">'+data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
+    else ao.innerHTML='<p style="color:#EF5D60">Error: '+(data.error&&data.error.message||JSON.stringify(data))+'</p>';
+  }catch(e){ao.innerHTML='<p style="color:#EF5D60">Error: '+e.message+'</p>';}
+}
+</script>
+</body>
+</html>
